@@ -167,7 +167,7 @@ class Server:
         if self._process is not None:
             raise RuntimeError("Server is already running.")
         self._check_resources()
-        self.logger.info(
+        print(
             f"Starting server with command: '{' '.join(self._command)}'..."
         )
         self._process = _RunningServerProcess(self._command, self.logger)
@@ -199,14 +199,13 @@ class Server:
     def _command(self) -> list[str]:
         cmd = [str(self.binary_path)]
         cmd.extend(["--model", str(self.model_path)])
-        cmd.extend(["--host", "127.0.0.1"])
+        # cmd.extend(["--host", "127.0.0.1"])
         cmd.extend(["--port", f"{self.port}"])
         cmd.extend(["--ctx_size", f"{self.ctx_size * self.parallel}"])
         cmd.extend(["--parallel", f"{self.parallel}"])
         cmd.extend(["-ngl", f"{self.ngl}"])
         if self.cont_batching:
             cmd.append("--cont_batching")
-        print(cmd)
         return cmd
 
     def _check_resources(self) -> None:
@@ -232,7 +231,7 @@ class _RunningServerProcess:
         while time.time() - start < timeout:
             self._check_not_exited()
             if self._status == "running":
-                self.logger.info("Server started.")
+                print("Server started.")
                 return
             time.sleep(0.1)
         raise TimeoutError(f"Server did not start within {timeout} seconds.")
@@ -252,7 +251,7 @@ class _RunningServerProcess:
                 line = line.strip()
                 if "HTTP server listening" in line:
                     self._status = "running"
-                self.logger.info(line)
+                print(line)
 
         std_out_thread = threading.Thread(target=watch, args=(self.popen.stdout,))
         std_err_thread = threading.Thread(target=watch, args=(self.popen.stderr,))
