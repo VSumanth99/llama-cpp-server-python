@@ -47,6 +47,7 @@ class Server:
         binary_path: str | Path,
         model_path: str | Path,
         port: int = 8080,
+        n_gpu_layers: int = 0,
         ctx_size: int = 512,
         parallel: int = 8,
         cont_batching: bool = True,
@@ -67,6 +68,8 @@ class Server:
             Must be a .gguf file, per the llama.cpp model format.
         port :
             The port to run the server on.
+        n_gpu_layers :
+            The number of GPU layers to offload the model to.
         ctx_size :
             The context size for each request.
             Note this is a different meaning from how the raw binary interprets it:
@@ -89,6 +92,12 @@ class Server:
         self.parallel = parallel
         self.cont_batching = cont_batching
 
+        if n_gpu_layers == -1:
+            self.ngl = 0x7fffffff # max value of int so all layers are offloaded
+        else:
+            assert n_gpu_layers >= 0, "n_gpu_layers must be non-negative."
+            self.ngl = n_gpu_layers
+        
         self._check_resources()
 
         if logger is None:
@@ -193,6 +202,7 @@ class Server:
         cmd.extend(["--port", f"{self.port}"])
         cmd.extend(["--ctx_size", f"{self.ctx_size * self.parallel}"])
         cmd.extend(["--parallel", f"{self.parallel}"])
+        cmd.extend(["--ngl", f"{self.ngl}"])
         if self.cont_batching:
             cmd.append("--cont_batching")
         return cmd
