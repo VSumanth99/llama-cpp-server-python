@@ -199,12 +199,14 @@ class Server:
     def _command(self) -> list[str]:
         cmd = [str(self.binary_path)]
         cmd.extend(["--model", str(self.model_path)])
+        cmd.extend(["--host", "127.0.0.1"])
         cmd.extend(["--port", f"{self.port}"])
         cmd.extend(["--ctx_size", f"{self.ctx_size * self.parallel}"])
         cmd.extend(["--parallel", f"{self.parallel}"])
-        cmd.extend(["--ngl", f"{self.ngl}"])
+        cmd.extend(["-ngl", f"{self.ngl}"])
         if self.cont_batching:
             cmd.append("--cont_batching")
+        print(cmd)
         return cmd
 
     def _check_resources(self) -> None:
