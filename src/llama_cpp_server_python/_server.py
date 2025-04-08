@@ -204,6 +204,7 @@ class Server:
         cmd.extend(["--ctx_size", f"{self.ctx_size * self.parallel}"])
         cmd.extend(["--parallel", f"{self.parallel}"])
         cmd.extend(["-ngl", f"{self.ngl}"])
+        cmd.extend(["--split-mode", "row"])
         if self.cont_batching:
             cmd.append("--cont_batching")
         return cmd
