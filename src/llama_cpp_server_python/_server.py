@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
-
+import requests
 from llama_cpp_server_python._binary import download_binary
 from llama_cpp_server_python._model import download_model
 
@@ -188,17 +188,19 @@ class Server:
         if self._process is None:
             raise RuntimeError("Server is not running.")
 
-        import socket, time
-
         deadline = time.time() + timeout
         while time.time() < deadline:
             try:
-                # try to open a TCP connection to the server port
-                with socket.create_connection(("127.0.0.1", self.port), timeout=1):
+                r = requests.get(self.base_url, timeout=1.0)
+            except requests.ConnectionError:
+                # server not yet up at all
+                pass
+            else:
+                if r.status_code == 200:
                     return
-            except OSError:
-                # still not listening, wait a bit and retry
-                time.sleep(0.5)
+                if r.status_code not in (503,):
+                    r.raise_for_status()
+            time.sleep(0.5)
 
         raise TimeoutError(
             f"Server did not start listening on port {self.port} "
@@ -209,7 +211,6 @@ class Server:
     def __enter__(self):
         """Start the server when entering a context manager."""
         self.start()
-        self._process.wait_for_ready()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
