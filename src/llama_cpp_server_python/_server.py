@@ -152,11 +152,10 @@ class Server:
         if self._process is not None:
             self._process.logger = logger
 
-    def start(self) -> None:
+    def start(self, wait=True, timeout=180) -> None:
         """Start the server in a subprocess.
 
-        This returns immediately. If you want to wait for the server to be ready,
-        call 'wait_for_start()' after this.
+        This returns immediately `if wait=False`.
 
         Pair this with a .stop() call when you are done.
         Or, use a context manager with 'with Server(...) as server: ...'
@@ -171,6 +170,8 @@ class Server:
             f"Starting server with command: '{' '.join(self._command)}'..."
         )
         self._process = _RunningServerProcess(self._command, self.logger)
+        if wait:
+            self.wait_for_ready(timeout=timeout)
 
     def stop(self) -> None:
         """Terminate the server subprocess. No-op if there is no active subprocess."""
@@ -179,11 +180,31 @@ class Server:
         self._process.stop()
         self._process = None
 
-    def wait_for_ready(self, *, timeout: int = 5) -> None:
-        """Wait until the server is ready to receive requests."""
+    def wait_for_ready(self, timeout: int = 180) -> None:
+        """
+        Wait until llama-server is accepting TCP connections on self.port.
+        This is more reliable than grepping its logs.
+        """
         if self._process is None:
             raise RuntimeError("Server is not running.")
-        self._process.wait_for_ready(timeout=timeout)
+
+        import socket, time
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                # try to open a TCP connection to the server port
+                with socket.create_connection(("127.0.0.1", self.port), timeout=1):
+                    return
+            except OSError:
+                # still not listening, wait a bit and retry
+                time.sleep(0.5)
+
+        raise TimeoutError(
+            f"Server did not start listening on port {self.port} "
+            f"within {timeout} seconds."
+        )
+
 
     def __enter__(self):
         """Start the server when entering a context manager."""
